@@ -1,14 +1,14 @@
 import { Vector } from "../../vector";
 import { Body } from "../body";
 
-export class MassiveSphere extends Body {
+export class Sphere extends Body {
     constructor(
-        public mass_Kg: number,
         public radius_Meters: number,
-        public position3vector_XYZ: Vector,
-        public velocity3vector_MeterPerSec: Vector,
+        position3vector_XYZ: Vector,
+        velocity3vector_MeterPerSec: Vector,
+        mass_Kg: number,
     ) {
-        super(position3vector_XYZ, velocity3vector_MeterPerSec);
+        super(position3vector_XYZ, velocity3vector_MeterPerSec, mass_Kg);
     }
 
     get volume_MeterCube(): number {
@@ -17,13 +17,5 @@ export class MassiveSphere extends Body {
 
     get massDensity_KgPerMeterCube(): number {
         return this.mass_Kg / this.volume_MeterCube; // mass/volume
-    }
-
-    get momentum3vector_KgMeterPerSecond(): Vector {
-        return Vector.scale(this.velocity3vector_MeterPerSec, this.mass_Kg);
-    }
-
-    get momentumMagnitude_KgMeterPerSecond(): number {
-        return this.momentum3vector_KgMeterPerSecond.norm;
     }
 }
