@@ -1,4 +1,4 @@
-class Vector {
+export class Vector {
     readonly size: number;
 
     constructor(public readonly coordinates: number[]) {
@@ -53,5 +53,13 @@ class Vector {
             }
         }
         return biv;
+    }
+
+    static concatVectors(vectors: Vector[]): Vector {
+        const concatCoordinates: number[] = [];
+        for (let vector of vectors) {
+            concatCoordinates.push(...vector.coordinates);
+        }
+        return new Vector(concatCoordinates);
     }
 }
