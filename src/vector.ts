@@ -62,4 +62,23 @@ export class Vector {
         }
         return new Vector(concatCoordinates);
     }
+
+    static distanceMagnitude(vec1: Vector, vec2: Vector): number {
+        // SUM (v_i - w_i)^2 : i = [x,y,z]
+        const sqDis = vec1.coordinates.reduce(
+            (sqDiff, coord, index) =>
+                sqDiff + (coord - vec2.coordinates[index]) ** 2,
+            0,
+        );
+
+        // sqrt(SUM (v_i - w_i)^2) = distance
+        return Math.sqrt(sqDis);
+    }
+
+    static distanceVector(vec1: Vector, vec2: Vector): Vector {
+        const coords = vec1.coordinates.map(
+            (coord, index) => coord - vec2.coordinates[index],
+        );
+        return new Vector(coords);
+    }
 }
