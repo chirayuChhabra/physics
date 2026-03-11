@@ -1,6 +1,6 @@
 import { Vector } from "../../math/linear-algebra/vector";
 
-export abstract class Body {
+export class Body {
     constructor(
         public position3vector_XYZ: Vector,
         public velocity3vector_MeterPerSec: Vector,

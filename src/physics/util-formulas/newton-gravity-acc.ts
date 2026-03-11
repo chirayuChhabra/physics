@@ -2,7 +2,7 @@ import { Vector } from "../../math/linear-algebra/vector";
 import { Body } from "../objects/body";
 import { PhysicsConstants } from "../constants";
 
-function getGravitationalAcceleration_meterPerSecondSquare(
+export function getGravitationalAcceleration_meterPerSecondSquare(
     effectedBody: Body,
     effectingBodies: Body[],
 ): Vector {
