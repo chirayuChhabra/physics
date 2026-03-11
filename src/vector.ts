@@ -5,6 +5,14 @@ export class Vector {
         this.size = coordinates.length;
     }
 
+    private static _compatibilityCheck(vec1: Vector, vec2: Vector): void {
+        if (vec1.size != vec2.size) {
+            throw new Error(
+                `Invalid Vector sizes , Expected both vectors to be the same size but got vec1.size: ${vec1.size} | vec2.size: ${vec2.size}`,
+            );
+        }
+    }
+
     get norm(): number {
         const sumSquare = this.coordinates.reduce(
             (sum, coordinate) => sum + coordinate ** 2,
@@ -13,12 +21,20 @@ export class Vector {
         return Math.sqrt(sumSquare);
     }
 
-    private static _compatibilityCheck(vec1: Vector, vec2: Vector): void {
-        if (vec1.size != vec2.size) {
-            throw new Error(
-                `Invalid Vector sizes , Expected both vectors to be the same size but got vec1.size: ${vec1.size} | vec2.size: ${vec2.size}`,
-            );
-        }
+    static add(v1: Vector, v2: Vector): Vector {
+        this._compatibilityCheck(v1, v2);
+
+        const coords = v1.coordinates.map((c, i) => c + v2.coordinates[i]);
+
+        return new Vector(coords);
+    }
+
+    static subtract(v1: Vector, v2: Vector): Vector {
+        this._compatibilityCheck(v1, v2);
+
+        const coords = v1.coordinates.map((c, i) => c - v2.coordinates[i]);
+
+        return new Vector(coords);
     }
 
     static scale(vector: Vector, scaler: number): Vector {
@@ -64,6 +80,7 @@ export class Vector {
     }
 
     static distanceMagnitude(vec1: Vector, vec2: Vector): number {
+        this._compatibilityCheck(vec1, vec2);
         // SUM (v_i - w_i)^2 : i = [x,y,z]
         const sqDis = vec1.coordinates.reduce(
             (sqDiff, coord, index) =>
@@ -76,6 +93,7 @@ export class Vector {
     }
 
     static distanceVector(vec1: Vector, vec2: Vector): Vector {
+        this._compatibilityCheck(vec1, vec2);
         const coords = vec1.coordinates.map(
             (coord, index) => coord - vec2.coordinates[index],
         );
