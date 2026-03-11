@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Simulation Visualizer</title>
+  <meta name="description" content="3D physics simulation visualizer — animate N-body state vectors with spheres and velocity arrows." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Three.js canvas -->
+  <canvas id="scene-canvas"></canvas>
+
+  <!-- Info panel (top-left) -->
+  <div id="info-panel">
+    <h1>Physics Sim Visualizer</h1>
+    <p>Bodies: <span id="body-count">—</span></p>
+    <p>Frames: <span id="frame-total">—</span></p>
+  </div>
+
+  <!-- Legend (top-right) -->
+  <div id="legend">
+    <h2>Bodies</h2>
+    <div id="legend-items"></div>
+  </div>
+
+  <!-- Playback controls (bottom-center) -->
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-reset" title="Reset">⏮</button>
+    <button class="ctrl-btn" id="btn-play" title="Play / Pause">▶</button>
+
+    <div class="slider-group">
+      <label for="frame-slider">Frame</label>
+      <input type="range" id="frame-slider" min="0" max="1" value="0" step="1" />
+    </div>
+
+    <span id="frame-display">0 / 0</span>
+
+    <div class="slider-group">
+      <label for="speed-slider">Speed</label>
+      <input type="range" id="speed-slider" min="1" max="30" value="10" step="1" />
+    </div>
+  </div>
+
+  <!-- Three.js via ES-module import map (CDN) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

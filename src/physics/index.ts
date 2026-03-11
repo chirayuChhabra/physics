@@ -1,4 +1,4 @@
-// test-two-body.ts
+// Sun-Earth-Moon 3-body simulation
 
 import { Vector } from "../math/linear-algebra/vector";
 import { PhysicsConstants } from "./constants";
@@ -6,50 +6,62 @@ import { Space } from "./objects/space";
 import { evolve } from "./evolve";
 import { evolutionEquation } from "./evolution-equations/newton-gravity.evolution";
 import { Body } from "./objects/body";
+import { render } from "./render";
 
-// Simple 2-body: massive sun at origin, small planet in (approx) circular orbit in +y.
-function makeTwoBodySpace(): Space {
+// Simple 3-body: Sun at origin, Earth in circular orbit, Moon orbiting Earth.
+function makeSunEarthMoonSpace(): Space {
     const G =
         PhysicsConstants.gravitationalConstant_MeterCubedPerKilogramSecondSquared;
 
-    const massSun = 1.98847e30; // kg
-    const massPlanet = 5.9722e24; // kg (Earth-like)
-    const orbitRadius = 1.496e11; // m (1 AU)
+    // Masses
+    const massSun = 1.98847e30;   // kg
+    const massEarth = 5.9722e24;  // kg
+    const massMoon = 7.342e22;    // kg
 
-    // Orbital speed v = sqrt(G M / r)
-    const orbitalSpeed = Math.sqrt((G * massSun) / orbitRadius); // m/s
+    // Orbital radii
+    const earthOrbitR = 1.496e11;    // m  (1 AU)
+    const moonOrbitR = 3.844e8;      // m  (384,400 km from Earth)
+
+    // Orbital speeds  v = sqrt(G * M_central / r)
+    const earthSpeed = Math.sqrt((G * massSun) / earthOrbitR);
+    const moonSpeedRelEarth = Math.sqrt((G * massEarth) / moonOrbitR);
 
     // Sun at origin, stationary
     const sun = new Body(
-        new Vector([0, 0, 0]), // position
-        new Vector([0, 0, 0]), // velocity
+        new Vector([0, 0, 0]),
+        new Vector([0, 0, 0]),
         massSun,
     );
 
-    // Planet on +x axis, velocity along +y
-    const planet = new Body(
-        new Vector([orbitRadius, 0, 0]), // position
-        new Vector([0, orbitalSpeed, 0]), // velocity
-        massPlanet,
+    // Earth on +x axis, velocity along +y
+    const earth = new Body(
+        new Vector([earthOrbitR, 0, 0]),
+        new Vector([0, earthSpeed, 0]),
+        massEarth,
     );
 
-    return new Space([sun, planet]);
+    // Moon offset from Earth along +x, velocity = Earth's + lunar orbital vel along +y
+    const moon = new Body(
+        new Vector([earthOrbitR + moonOrbitR, 0, 0]),
+        new Vector([0, earthSpeed + moonSpeedRelEarth, 0]),
+        massMoon,
+    );
+
+    return new Space([sun, earth, moon]);
 }
 
 function run() {
-    const initialSpace = makeTwoBodySpace();
+    const initialSpace = makeSunEarthMoonSpace();
 
-    // 1 day in seconds, and simulate ~10 days
-    const dt = 60 * 60; // 1 hour
-    const totalTime = 10 * 24 * 60 * 60; // 10 days
+    // 1 full year with 3-hour timesteps → ~2920 frames
+    const dt = 3 * 60 * 60;                   // 3 hours
+    const totalTime = 365 * 24 * 60 * 60;      // 1 year
 
+    console.log("Running Sun-Earth-Moon simulation (1 year)…");
     const states = evolve(initialSpace, evolutionEquation, totalTime, dt);
+    console.log(`Done — ${states.length} frames generated.`);
 
-    console.log("Number of saved states:", states.length);
-    console.log("Initial state vector:", states[0]);
-    console.log("Final state vector:", states[states.length - 1]);
-
-    console.log(states.slice(0, 10));
+    render(states);
 }
 
 run();
