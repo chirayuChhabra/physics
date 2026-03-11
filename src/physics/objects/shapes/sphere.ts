@@ -1,4 +1,4 @@
-import { Vector } from "../../vector";
+import { Vector } from "../../../math/linear-algebra/vector";
 import { Body } from "../body";
 
 export class Sphere extends Body {

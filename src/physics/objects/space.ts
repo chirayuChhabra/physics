@@ -1,5 +1,5 @@
-import { Body } from "./objects/body";
-import { Vector } from "./vector";
+import { Body } from "./body";
+import { Vector } from "../../math/linear-algebra/vector";
 
 export class Space {
     constructor(public bodies: Body[]) {}

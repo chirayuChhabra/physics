@@ -1,4 +1,4 @@
-import { Vector } from "../vector";
+import { Vector } from "../../math/linear-algebra/vector";
 
 export abstract class Body {
     constructor(
