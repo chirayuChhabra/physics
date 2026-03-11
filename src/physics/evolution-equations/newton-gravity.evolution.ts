@@ -3,7 +3,10 @@ import { Body } from "../objects/body";
 import { Space } from "../objects/space";
 import { getGravitationalAcceleration_meterPerSecondSquare } from "../util-formulas/newton-gravity-acc";
 
-function evolutionEquation(workingSpace: Space, deltaTime: number): Space {
+export function evolutionEquation(
+    workingSpace: Space,
+    deltaTime: number,
+): Space {
     const bodies = workingSpace.bodies;
     const N = bodies.length;
     const accelerations: Vector[] = [];
