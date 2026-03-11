@@ -28,7 +28,7 @@ export function getGravitationalAcceleration_meterPerSecondSquare(
 
         const accTerm: Vector = Vector.scale(effectingDistance, scalingFactor);
 
-        Vector.add(partialAcceleration, accTerm);
+        partialAcceleration = Vector.add(partialAcceleration, accTerm);
     }
 
     const acceleration = Vector.scale(
