@@ -19,11 +19,11 @@
  */
 
 import { writeFileSync } from "fs";
-import { resolve, dirname } from "path";
+import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FRONTEND_DIR = resolve(__dirname, "../../frontend");
+const FRONTEND_DIR = resolve(__dirname, "../../frontend") + "/";
 const DATA_PATH = resolve(FRONTEND_DIR, "simulationData.json");
 const CONFIG_PATH = resolve(FRONTEND_DIR, "simulationConfig.json");
 const PORT = 3000;
@@ -55,10 +55,22 @@ export function render(states: number[][], options: RenderOptions = {}): void {
         async fetch(req: Request) {
             const url = new URL(req.url);
             let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
-            const fullPath = resolve(FRONTEND_DIR + filePath);
 
-            // Security: don't serve files outside frontend/
-            if (!fullPath.startsWith(FRONTEND_DIR)) {
+            // Security: Decode and normalize path to prevent path traversal
+            let decodedPath: string;
+            try {
+                decodedPath = decodeURIComponent(filePath);
+            } catch (e) {
+                return new Response("Invalid path", { status: 400 });
+            }
+
+            // Join with FRONTEND_DIR and resolve to absolute path
+            let fullPath = resolve(join(FRONTEND_DIR, decodedPath));
+
+            // Ensure the resulting path is still within FRONTEND_DIR
+            // We use the directory without trailing slash for the check, but ensure it's a directory boundary
+            const normalizedFrontendDir = resolve(FRONTEND_DIR);
+            if (fullPath !== normalizedFrontendDir && !fullPath.startsWith(normalizedFrontendDir + "/")) {
                 return new Response("Forbidden", { status: 403 });
             }
 
