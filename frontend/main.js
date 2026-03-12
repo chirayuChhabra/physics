@@ -99,22 +99,22 @@ orbitControls.autoRotateSpeed = 0.2;
 /* ─── Post-processing (Bloom) ─── */
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-bloomPass.threshold = 0.2; // Don't bloom everything
-bloomPass.strength = 1.8;  // Make stars/sun glow more
-bloomPass.radius = 0.8;
+bloomPass.threshold = 0.8; // Only bloom very bright things (like emissive materials)
+bloomPass.strength = 1.5;
+bloomPass.radius = 0.5;
 
 const composer = new EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
 /* ─── Lighting ─── */
-scene.add(new THREE.AmbientLight(0x1a1a2e, 0.8)); // Softer ambient
-const pointLight = new THREE.PointLight(0xffffff, 2.5, 300); // Stronger central light (sun)
+scene.add(new THREE.AmbientLight(0xffffff, 0.3)); // Subtle white ambient light so everything is visible
+const pointLight = new THREE.PointLight(0xffffff, 2.0, 500); // Strong central light (sun)
 pointLight.position.set(0, 0, 0); // Put light at the center of the system
 scene.add(pointLight);
 
-// Add a subtle directional light to simulate distant star light giving edge definition
-const dirLight = new THREE.DirectionalLight(0x404060, 0.5);
+// Add a soft directional light for base visibility of unlit sides
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.2);
 dirLight.position.set(20, 30, 20);
 scene.add(dirLight);
 
@@ -222,11 +222,13 @@ function makeLabel(text, color) {
 let frames = [];
 let numBodies = 0;
 let spheres = [];
-let arrows = [];
+let arrows = [];      // Velocity arrows
+let forceArrows = []; // Force/Acceleration arrows
 let labels = [];
 let trails = [];
 let trailLines = [];
 const ARROW_SCALE = 0.5;
+const FORCE_ARROW_SCALE = 5.0; // Acceleration values tend to be small compared to velocity
 const TRAIL_LENGTH = 250;
 
 function loadFrames(data) {
@@ -237,9 +239,10 @@ function loadFrames(data) {
   // Clean previous objects
   spheres.forEach(s => scene.remove(s));
   arrows.forEach(a => scene.remove(a));
+  forceArrows.forEach(a => scene.remove(a));
   labels.forEach(l => scene.remove(l));
   trailLines.forEach(t => scene.remove(t));
-  spheres = []; arrows = []; labels = []; trails = []; trailLines = [];
+  spheres = []; arrows = []; forceArrows = []; labels = []; trails = []; trailLines = [];
 
   for (let i = 0; i < numBodies; i++) {
     const color = getBodyColor(i);
@@ -250,24 +253,35 @@ function loadFrames(data) {
     // Using high detail spheres
     const geo = new THREE.SphereGeometry(radius, 64, 64);
 
-    // Add noise bump mapping or standard clean look based on whether it's sun or planet
-    const isSun = i === 0; // Rough heuristic, assuming 0th body is largest/central
+    // Better heuristic for celestial body types
+    // Small particles (like rings) shouldn't have atmospheres or emissive glow.
+    // Huge things are stars. Mid-sized are planets/gas giants.
+    // We check the name to see if it's explicitly a "Sun" or star, or an unnamed particle.
+    const isStar = name.toLowerCase().includes('sun') || name.toLowerCase().includes('star');
+    const isParticle = name.trim() === '' || radius < 0.05; // tiny or no name -> likely ring dust
+    const isGasGiant = name.toLowerCase().includes('jupiter') || name.toLowerCase().includes('saturn') || radius > 0.5 && !isStar;
 
-    const mat = new THREE.MeshPhysicalMaterial({
+    let emissiveColor = new THREE.Color(0x000000);
+    let emissiveIntensity = 0;
+
+    if (isStar) {
+      emissiveColor = color;
+      emissiveIntensity = 2.0; // High enough to trigger bloom
+    }
+
+    const mat = new THREE.MeshStandardMaterial({
       color,
-      emissive: isSun ? color : new THREE.Color(0x000000),
-      emissiveIntensity: isSun ? 2.5 : 0.0,
-      metalness: isSun ? 0.0 : 0.2,
-      roughness: isSun ? 1.0 : 0.6,
-      clearcoat: isSun ? 0.0 : 0.3,
-      clearcoatRoughness: 0.4,
+      emissive: emissiveColor,
+      emissiveIntensity,
+      metalness: isParticle ? 0.1 : 0.0,
+      roughness: isParticle ? 0.9 : 0.6,
     });
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
     spheres.push(mesh);
 
     // ─── Atmosphere / Glow ───
-    if (isSun) {
+    if (isStar) {
       // Stronger glow for the sun
       const glowGeo = new THREE.SphereGeometry(radius * 1.4, 32, 32);
       const glowMat = new THREE.MeshBasicMaterial({
@@ -278,13 +292,17 @@ function loadFrames(data) {
         side: THREE.BackSide
       });
       mesh.add(new THREE.Mesh(glowGeo, glowMat));
-    } else {
-      // Atmosphere ring for planets
-      const ringGeo = new THREE.RingGeometry(radius * 1.05, radius * 1.25, 64);
+    } else if (!isParticle) {
+      // Atmosphere ring for standard planets/gas giants
+      const atmRadiusInner = radius * 1.05;
+      const atmRadiusOuter = isGasGiant ? radius * 1.1 : radius * 1.25;
+      const atmOpacity = isGasGiant ? 0.05 : 0.15;
+
+      const ringGeo = new THREE.RingGeometry(atmRadiusInner, atmRadiusOuter, 64);
       const ringMat = new THREE.MeshBasicMaterial({
         color,
         transparent: true,
-        opacity: 0.15,
+        opacity: atmOpacity,
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending
       });
@@ -303,13 +321,21 @@ function loadFrames(data) {
       labels.push(null);
     }
 
-    // ─── Arrow ───
+    // ─── Velocity Arrow ───
     const arrow = new THREE.ArrowHelper(
       new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1,
       color.getHex(), 0.15, 0.08,
     );
     scene.add(arrow);
     arrows.push(arrow);
+
+    // ─── Force/Acceleration Arrow ───
+    const forceArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1,
+      0xffffff, 0.15, 0.08, // White for force vectors to distinguish them
+    );
+    scene.add(forceArrow);
+    forceArrows.push(forceArrow);
 
     // ─── Trail ───
     trails.push([]);
@@ -376,6 +402,37 @@ function setFrame(idx) {
       arrows[i].visible = true;
     } else {
       arrows[i].visible = false;
+    }
+
+    // Force/Acceleration arrow (approximate by looking at next frame velocity if available)
+    if (currentFrame < frames.length - 1) {
+      const nextSv = frames[currentFrame + 1];
+      const nvx = nextSv[off + 3], nvy = nextSv[off + 4], nvz = nextSv[off + 5];
+      // Basic finite difference approximation of acceleration vector (direction mostly)
+      const ax = nvx - vx;
+      const ay = nvy - vy;
+      const az = nvz - vz;
+
+      const acc = new THREE.Vector3(ax, ay, az);
+      const accMag = acc.length();
+
+      if (accMag > 1e-8) {
+        forceArrows[i].position.set(x, y, z);
+        forceArrows[i].setDirection(acc.clone().normalize());
+        // Scaling acceleration can be tricky, using an arbitrary constant for visibility
+        let arrowLen = accMag * FORCE_ARROW_SCALE;
+        // Cap max length so strong forces don't blow up the screen
+        arrowLen = Math.min(arrowLen, 10);
+        // Cap min length so it is visible if force exists
+        arrowLen = Math.max(arrowLen, 0.5);
+
+        forceArrows[i].setLength(arrowLen, arrowLen * 0.2, arrowLen * 0.1);
+        forceArrows[i].visible = true;
+      } else {
+        forceArrows[i].visible = false;
+      }
+    } else {
+      forceArrows[i].visible = false; // Last frame has no 'next frame' to compute force
     }
 
     // Trail
