@@ -7,6 +7,7 @@ import { evolve } from "../evolve";
 import { evolutionEquation } from "../evolution-equations/newton-gravity.evolution";
 import { Body } from "../objects/body";
 import { render, BodyConfig } from "../render";
+import { runCachedSimulation } from "../cache";
 
 function makeSaturnRingSystem(numParticles: number): { space: Space; config: BodyConfig[] } {
     const G = PhysicsConstants.gravitationalConstant_MeterCubedPerKilogramSecondSquared;
@@ -77,8 +78,11 @@ const { space, config } = makeSaturnRingSystem(250);
 const dt = 60 * 60; // 1 hour per step
 const totalTime = 14 * 24 * 60 * 60; // 14 days
 
-console.log(`Running Saturn Ring Sim (250 particles, 14 days)…\nWarning: this is O(N^2) and may take a few seconds!`);
-const states = evolve(space, evolutionEquation, totalTime, dt);
-console.log(`Done — ${states.length} frames.`);
+const states = runCachedSimulation("saturn-rings", () => {
+    console.log(`Running Saturn Ring Sim (250 particles, 14 days)…\nWarning: this is O(N^2) and may take a few seconds!`);
+    const result = evolve(space, evolutionEquation, totalTime, dt);
+    console.log(`Done — ${result.length} frames.`);
+    return result;
+});
 
 render(states, { bodies: config });

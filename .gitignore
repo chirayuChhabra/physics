@@ -2,3 +2,4 @@
 .direnv/
 frontend/simulationConfig.json
 frontend/simulationData.json
+.cache/

@@ -7,6 +7,7 @@ import { evolve } from "../evolve";
 import { evolutionEquation } from "../evolution-equations/newton-gravity.evolution";
 import { Body } from "../objects/body";
 import { render } from "../render";
+import { runCachedSimulation } from "../cache";
 
 function makeFullSolarSystem(): Space {
     const G =
@@ -50,9 +51,12 @@ const space = makeFullSolarSystem();
 const dt = 24 * 60 * 60;                              // 1 day
 const totalTime = 12 * 365.25 * 24 * 60 * 60;         // 12 years
 
-console.log("Running full solar system (12 years)…");
-const states = evolve(space, evolutionEquation, totalTime, dt);
-console.log(`Done — ${states.length} frames.`);
+const states = runCachedSimulation("full-solar-system", () => {
+    console.log("Running full solar system (12 years)…");
+    const result = evolve(space, evolutionEquation, totalTime, dt);
+    console.log(`Done — ${result.length} frames.`);
+    return result;
+});
 
 render(states, {
     bodies: [

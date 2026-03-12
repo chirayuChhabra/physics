@@ -7,6 +7,7 @@ import { evolve } from "../evolve";
 import { evolutionEquation } from "../evolution-equations/newton-gravity.evolution";
 import { Body } from "../objects/body";
 import { render } from "../render";
+import { runCachedSimulation } from "../cache";
 
 function makeInnerSolarSystem(): Space {
     const G =
@@ -47,9 +48,12 @@ const space = makeInnerSolarSystem();
 const dt = 6 * 60 * 60;
 const totalTime = 2 * 365 * 24 * 60 * 60;
 
-console.log("Running inner solar system (2 years)…");
-const states = evolve(space, evolutionEquation, totalTime, dt);
-console.log(`Done — ${states.length} frames.`);
+const states = runCachedSimulation("inner-solar-system", () => {
+    console.log("Running inner solar system (2 years)…");
+    const result = evolve(space, evolutionEquation, totalTime, dt);
+    console.log(`Done — ${result.length} frames.`);
+    return result;
+});
 
 render(states, {
     bodies: [
