@@ -3,18 +3,18 @@
 
 /* ─── CSS Custom Properties ─── */
 :root {
-  --bg-deep: #0a0e17;
-  --bg-panel: rgba(15, 20, 35, 0.75);
-  --border-glow: rgba(100, 140, 255, 0.25);
+  --bg-deep: #02040a;
+  --bg-panel: rgba(8, 12, 25, 0.55);
+  --border-glow: rgba(120, 160, 255, 0.15);
   --accent-1: #6c8cff;
   --accent-2: #a78bfa;
   --accent-3: #38bdf8;
   --text-primary: #e8ecf4;
-  --text-secondary: #8a94a8;
+  --text-secondary: #a0a8b8;
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --radius: 14px;
-  --glass-blur: 18px;
+  --radius: 16px;
+  --glass-blur: 24px;
 }
 
 /* ─── Reset ─── */
