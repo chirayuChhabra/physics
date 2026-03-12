@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { sampleFrames } from './sampleData.js';
 
 const TARGET_POS_RANGE = 8;   // normalise positions into ±8 scene units
@@ -72,31 +75,48 @@ let bodyConfig = null; // will be set from simulationConfig.json
    Scene bootstrap
    ════════════════════════════════════════════════════════════ */
 const canvas = document.getElementById('scene-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0e17);
-scene.fog = new THREE.FogExp2(0x0a0e17, 0.008);
+scene.background = new THREE.Color(0x02040a); // Darker space background
+scene.fog = new THREE.FogExp2(0x02040a, 0.005);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 500);
-camera.position.set(0, 14, 16);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 15, 20);
 
 const orbitControls = new OrbitControls(camera, canvas);
 orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.08;
-orbitControls.minDistance = 3;
-orbitControls.maxDistance = 100;
+orbitControls.dampingFactor = 0.05;
+orbitControls.minDistance = 2;
+orbitControls.maxDistance = 300;
+orbitControls.autoRotate = true; // Slowly rotate the camera
+orbitControls.autoRotateSpeed = 0.2;
+
+/* ─── Post-processing (Bloom) ─── */
+const renderScene = new RenderPass(scene, camera);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0.2; // Don't bloom everything
+bloomPass.strength = 1.8;  // Make stars/sun glow more
+bloomPass.radius = 0.8;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
 
 /* ─── Lighting ─── */
-scene.add(new THREE.AmbientLight(0x404060, 1.2));
-const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
-pointLight.position.set(10, 15, 10);
+scene.add(new THREE.AmbientLight(0x1a1a2e, 0.8)); // Softer ambient
+const pointLight = new THREE.PointLight(0xffffff, 2.5, 300); // Stronger central light (sun)
+pointLight.position.set(0, 0, 0); // Put light at the center of the system
 scene.add(pointLight);
-scene.add(new THREE.PointLight(0x6c8cff, 0.6, 80).translateX(-10).translateY(-5));
+
+// Add a subtle directional light to simulate distant star light giving edge definition
+const dirLight = new THREE.DirectionalLight(0x404060, 0.5);
+dirLight.position.set(20, 30, 20);
+scene.add(dirLight);
 
 /* ─── Grid + Axes ─── */
 const grid = new THREE.GridHelper(40, 40, 0x1a2040, 0x111830);
@@ -109,13 +129,52 @@ axes.material.opacity = 0.4;
 axes.material.transparent = true;
 scene.add(axes);
 
-/* ─── Starfield ─── */
+/* ─── High Quality Starfield ─── */
 {
   const starGeo = new THREE.BufferGeometry();
-  const positions = new Float32Array(1500 * 3);
-  for (let i = 0; i < positions.length; i++) positions[i] = (Math.random() - 0.5) * 200;
+  const numStars = 5000;
+  const positions = new Float32Array(numStars * 3);
+  const colors = new Float32Array(numStars * 3);
+
+  const color1 = new THREE.Color(0xffffff);
+  const color2 = new THREE.Color(0xa78bfa); // faint purple
+  const color3 = new THREE.Color(0x38bdf8); // faint blue
+
+  for (let i = 0; i < numStars; i++) {
+    // Generate spherical coordinates for deep space feel
+    const r = 100 + Math.random() * 400; // Far away
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos((Math.random() * 2) - 1);
+
+    positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i*3+2] = r * Math.cos(phi);
+
+    // Mix colors slightly
+    const mix = Math.random();
+    let c = color1;
+    if (mix > 0.8) c = color2;
+    else if (mix > 0.6) c = color3;
+
+    colors[i*3] = c.r * (0.5 + Math.random() * 0.5);
+    colors[i*3+1] = c.g * (0.5 + Math.random() * 0.5);
+    colors[i*3+2] = c.b * (0.5 + Math.random() * 0.5);
+  }
+
   starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.5 })));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  // Custom shader for twinkle effect if wanted, or just standard points
+  const starMat = new THREE.PointsMaterial({
+    size: 0.5,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending
+  });
+
+  scene.add(new THREE.Points(starGeo, starMat));
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -188,21 +247,52 @@ function loadFrames(data) {
     const name = getBodyName(i);
 
     // ─── Sphere ───
-    const geo = new THREE.SphereGeometry(radius, 32, 32);
-    const mat = new THREE.MeshStandardMaterial({
-      color, emissive: color, emissiveIntensity: 0.3,
-      metalness: 0.2, roughness: 0.5,
+    // Using high detail spheres
+    const geo = new THREE.SphereGeometry(radius, 64, 64);
+
+    // Add noise bump mapping or standard clean look based on whether it's sun or planet
+    const isSun = i === 0; // Rough heuristic, assuming 0th body is largest/central
+
+    const mat = new THREE.MeshPhysicalMaterial({
+      color,
+      emissive: isSun ? color : new THREE.Color(0x000000),
+      emissiveIntensity: isSun ? 2.5 : 0.0,
+      metalness: isSun ? 0.0 : 0.2,
+      roughness: isSun ? 1.0 : 0.6,
+      clearcoat: isSun ? 0.0 : 0.3,
+      clearcoatRoughness: 0.4,
     });
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
     spheres.push(mesh);
 
-    // ─── Glow ring ───
-    const ringGeo = new THREE.RingGeometry(radius * 1.2, radius * 1.6, 32);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: 0.1, side: THREE.DoubleSide,
-    });
-    mesh.add(new THREE.Mesh(ringGeo, ringMat));
+    // ─── Atmosphere / Glow ───
+    if (isSun) {
+      // Stronger glow for the sun
+      const glowGeo = new THREE.SphereGeometry(radius * 1.4, 32, 32);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide
+      });
+      mesh.add(new THREE.Mesh(glowGeo, glowMat));
+    } else {
+      // Atmosphere ring for planets
+      const ringGeo = new THREE.RingGeometry(radius * 1.05, radius * 1.25, 64);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      // Ensure the ring always faces the camera in the render loop
+      ringMesh.userData.isAtmosphereRing = true;
+      mesh.add(ringMesh);
+    }
 
     // ─── Name label ───
     if (name) {
@@ -223,10 +313,14 @@ function loadFrames(data) {
 
     // ─── Trail ───
     trails.push([]);
-    const trailLine = new THREE.Line(
-      new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35 }),
-    );
+    // Using a better looking material for the trail
+    const trailMat = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+    const trailLine = new THREE.Line(new THREE.BufferGeometry(), trailMat);
     scene.add(trailLine);
     trailLines.push(trailLine);
   }
@@ -359,12 +453,19 @@ function animate(time) {
     if (accumulator > frameInterval * 3) accumulator = 0;
   }
 
-  // Glow rings face camera
-  spheres.forEach(s => { if (s.children[0]) s.children[0].lookAt(camera.position); });
-  // Labels face camera (sprites do this automatically)
+  // Rotate atmosphere rings to face camera
+  spheres.forEach(s => {
+    s.children.forEach(child => {
+      if (child.userData.isAtmosphereRing) {
+        child.lookAt(camera.position);
+      }
+    });
+  });
+
+  // Slowly rotate sun's geometry itself? Or keep simple.
 
   orbitControls.update();
-  renderer.render(scene, camera);
+  composer.render(); // Use effect composer instead of plain renderer
 }
 
 /* ─── Resize ─── */
@@ -372,6 +473,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 /* ─── Boot ─── */
