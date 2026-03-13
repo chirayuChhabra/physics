@@ -54,8 +54,8 @@ function makeSaturnRingSystem(numParticles: number): { space: Space; config: Bod
             )
         );
 
-        // Randomize ring colors slightly between dirty ice and dust
-        const colors = ["#d1d5db", "#9ca3af", "#d6d3d1", "#a8a29e"];
+        // Randomize ring colors to create beautiful, vibrant rings
+        const colors = ["#d4af37", "#f5deb3", "#add8e6", "#d8bfd8", "#ffe4b5", "#f0e68c"]; // Pale golds, warm browns, icy blues, dusty rose
         const color = colors[Math.floor(Math.random() * colors.length)];
         
         config.push({
